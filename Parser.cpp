@@ -33,26 +33,22 @@ struct Token
 {
     TokenType type;
     string value;
+    int lineNumber;
 };
 
 class Lexer
 {
-
 private:
     string src;
     size_t pos;
-    /*
-    It hold positive values.
-    In C++, size_t is an unsigned integer data type used to represent the
-    size of objects in bytes or indices, especially when working with memory-related
-    functions, arrays, and containers like vector or string. You can also use the int data type but size_t is recommended one
-    */
+    int lineNumber;
 
 public:
     Lexer(const string &src)
     {
         this->src = src;
         this->pos = 0;
+        this->lineNumber = 1;
     }
 
     vector<Token> tokenize()
@@ -62,6 +58,12 @@ public:
         {
             char current = src[pos];
 
+            if (current == '\n')
+            {
+                lineNumber++;
+                pos++;
+                continue;
+            }
             if (isspace(current))
             {
                 pos++;
@@ -69,67 +71,67 @@ public:
             }
             if (isdigit(current))
             {
-                tokens.push_back(Token{T_NUM, consumeNumber()});
+                tokens.push_back(Token{T_NUM, consumeNumber(), lineNumber});
                 continue;
             }
             if (isalpha(current))
             {
                 string word = consumeWord();
                 if (word == "int")
-                    tokens.push_back(Token{T_INT, word});
+                    tokens.push_back(Token{T_INT, word, lineNumber});
                 else if (word == "if")
-                    tokens.push_back(Token{T_IF, word});
+                    tokens.push_back(Token{T_IF, word, lineNumber});
                 else if (word == "else")
-                    tokens.push_back(Token{T_ELSE, word});
+                    tokens.push_back(Token{T_ELSE, word, lineNumber});
                 else if (word == "return")
-                    tokens.push_back(Token{T_RETURN, word});
+                    tokens.push_back(Token{T_RETURN, word, lineNumber});
                 else
-                    tokens.push_back(Token{T_ID, word});
+                    tokens.push_back(Token{T_ID, word, lineNumber});
                 continue;
             }
 
             switch (current)
             {
             case '=':
-                tokens.push_back(Token{T_ASSIGN, "="});
+                tokens.push_back(Token{T_ASSIGN, "=", lineNumber});
                 break;
             case '+':
-                tokens.push_back(Token{T_PLUS, "+"});
+                tokens.push_back(Token{T_PLUS, "+", lineNumber});
                 break;
             case '-':
-                tokens.push_back(Token{T_MINUS, "-"});
+                tokens.push_back(Token{T_MINUS, "-", lineNumber});
                 break;
             case '*':
-                tokens.push_back(Token{T_MUL, "*"});
+                tokens.push_back(Token{T_MUL, "*", lineNumber});
                 break;
             case '/':
-                tokens.push_back(Token{T_DIV, "/"});
+                tokens.push_back(Token{T_DIV, "/", lineNumber});
                 break;
             case '(':
-                tokens.push_back(Token{T_LPAREN, "("});
+                tokens.push_back(Token{T_LPAREN, "(", lineNumber});
                 break;
             case ')':
-                tokens.push_back(Token{T_RPAREN, ")"});
+                tokens.push_back(Token{T_RPAREN, ")", lineNumber});
                 break;
             case '{':
-                tokens.push_back(Token{T_LBRACE, "{"});
+                tokens.push_back(Token{T_LBRACE, "{", lineNumber});
                 break;
             case '}':
-                tokens.push_back(Token{T_RBRACE, "}"});
+                tokens.push_back(Token{T_RBRACE, "}", lineNumber});
                 break;
             case ';':
-                tokens.push_back(Token{T_SEMICOLON, ";"});
+                tokens.push_back(Token{T_SEMICOLON, ";", lineNumber});
                 break;
             case '>':
-                tokens.push_back(Token{T_GT, ">"});
+                tokens.push_back(Token{T_GT, ">", lineNumber});
                 break;
             default:
-                cout << "Unexpected character: " << current << endl;
+                cout << "Unexpected character: " << "'" << current << "' at line " << lineNumber << endl;
                 exit(1);
             }
             pos++;
         }
-        tokens.push_back(Token{T_EOF, ""});
+        tokens.push_back(Token{T_EOF, "", lineNumber});
         return tokens;
     }
 
@@ -152,7 +154,6 @@ public:
 
 class Parser
 {
-
 public:
     Parser(const vector<Token> &tokens)
     {
@@ -172,6 +173,13 @@ public:
 private:
     vector<Token> tokens;
     size_t pos;
+
+    // New error function to print message with line number
+    void error(const string &message)
+    {
+        cout << "Syntax error at line " << tokens[pos].lineNumber << ": " << message << endl;
+        exit(1);
+    }
 
     void parseStatement()
     {
@@ -197,8 +205,7 @@ private:
         }
         else
         {
-            cout << "Syntax error: unexpected token " << tokens[pos].value << endl;
-            exit(1);
+            error("unexpected token " + tokens[pos].value);
         }
     }
 
@@ -211,6 +218,7 @@ private:
         }
         expect(T_RBRACE);
     }
+
     void parseDeclaration()
     {
         expect(T_INT);
@@ -286,8 +294,7 @@ private:
         }
         else
         {
-            cout << "Syntax error: unexpected token " << tokens[pos].value << endl;
-            exit(1);
+            error("unexpected token " + tokens[pos].value);
         }
     }
 
@@ -299,8 +306,53 @@ private:
         }
         else
         {
-            cout << "Syntax error: expected " << type << " but found " << tokens[pos].value << endl;
-            exit(1);
+            error("expected " + tokenTypeToString(type) + " but found " + tokens[pos].value);
+        }
+    }
+
+    // A helper function to convert TokenType to string for better error messages
+    string tokenTypeToString(TokenType type)
+    {
+        switch (type)
+        {
+        case T_INT:
+            return "int";
+        case T_ID:
+            return "identifier";
+        case T_NUM:
+            return "number";
+        case T_IF:
+            return "if";
+        case T_ELSE:
+            return "else";
+        case T_RETURN:
+            return "return";
+        case T_ASSIGN:
+            return "=";
+        case T_PLUS:
+            return "+";
+        case T_MINUS:
+            return "-";
+        case T_MUL:
+            return "*";
+        case T_DIV:
+            return "/";
+        case T_LPAREN:
+            return "(";
+        case T_RPAREN:
+            return ")";
+        case T_LBRACE:
+            return "{";
+        case T_RBRACE:
+            return "}";
+        case T_SEMICOLON:
+            return ";";
+        case T_GT:
+            return ">";
+        case T_EOF:
+            return "end of file";
+        default:
+            return "unknown";
         }
     }
 };
@@ -322,13 +374,15 @@ int main(int argc, char *argv[])
     }
 
     string line;
+    string content;
     while (getline(file, line))
     {
+        content += line + "\n";
     }
 
     file.close();
 
-    Lexer lexer(line);
+    Lexer lexer(content);
     vector<Token> tokens = lexer.tokenize();
 
     Parser parser(tokens);
