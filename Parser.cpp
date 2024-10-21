@@ -310,7 +310,6 @@ private:
         }
     }
 
-    // A helper function to convert TokenType to string for better error messages
     string tokenTypeToString(TokenType type)
     {
         switch (type)
