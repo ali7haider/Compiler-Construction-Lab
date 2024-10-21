@@ -3,6 +3,7 @@
 #include <string>
 #include <cctype>
 #include <map>
+#include <fstream>
 
 using namespace std;
 
@@ -304,21 +305,30 @@ private:
     }
 };
 
-int main()
+int main(int argc, char *argv[])
 {
-    string input = R"(
-        int a;
-        a = 5;
-        int b;
-        b = a + 10;
-        if (b > 10) {
-            return b;
-        } else {
-            return 0;
-        }
-    )";
+    if (argc != 2)
+    {
+        std::cerr << "Usage: " << argv[0] << " <file_name>\n";
+        return 1;
+    }
 
-    Lexer lexer(input);
+    ifstream file(argv[1]);
+
+    if (!file.is_open())
+    {
+        std::cerr << "Error: Could not open file " << argv[1] << "\n";
+        return 1;
+    }
+
+    string line;
+    while (getline(file, line))
+    {
+    }
+
+    file.close();
+
+    Lexer lexer(line);
     vector<Token> tokens = lexer.tokenize();
 
     Parser parser(tokens);
