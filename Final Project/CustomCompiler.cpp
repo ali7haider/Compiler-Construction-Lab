@@ -1,8 +1,10 @@
 #include <iostream>
 #include <string>
+#include <map>
+#include <stack>
 #include <vector>
-#include <cctype>
-
+#include <sstream>
+#include <stdexcept>
 using namespace std;
 
 enum TokenType
@@ -310,6 +312,85 @@ void Lexer::error(const string &message)
     cout << "Lexical error at line " << lineNumber << ": " << message << endl;
     exit(1);
 }
+// Symbol Table Class
+class SymbolTable
+{
+public:
+    void declareVariable(const string &name, const string &type)
+    {
+        if (symbolTable.find(name) != symbolTable.end())
+        {
+            throw runtime_error("Semantic error: Variable '" + name + "' is already declared.");
+        }
+        symbolTable[name] = type;
+    }
+
+    void declareType(const string &name, const string &category)
+    {
+        if (typeTable.find(name) != typeTable.end())
+        {
+            throw runtime_error("Semantic error: Type '" + name + "' is already declared.");
+        }
+        typeTable[name] = category;
+    }
+
+    string getVariableType(const string &name)
+    {
+        if (symbolTable.find(name) == symbolTable.end())
+        {
+            throw runtime_error("Semantic error: Variable '" + name + "' is not declared.");
+        }
+        return symbolTable[name];
+    }
+
+    bool isDeclared(const string &name) const
+    {
+        return symbolTable.find(name) != symbolTable.end();
+    }
+
+    bool isType(const string &name) const
+    {
+        auto it = typeTable.find(name);
+        if (it == typeTable.end())
+            return false;
+        return (it->second == "struct" || it->second == "class");
+    }
+
+private:
+    map<string, string> symbolTable; // name -> type
+    map<string, string> typeTable;   // typeName -> category
+};
+
+// Intermediate Code Generator Class
+class IntermediateCodeGenerator
+{
+public:
+    vector<string> instructions;
+    int tempCount = 0;
+
+    string newTemp()
+    {
+        return "t" + to_string(tempCount++);
+    }
+
+    void addInstruction(const string &instr)
+    {
+        instructions.push_back(instr);
+    }
+
+    void printInstructions() const
+    {
+        for (const auto &instr : instructions)
+        {
+            cout << instr << endl;
+        }
+    }
+
+    vector<string> getInstructionsAsVector() const
+    {
+        return instructions;
+    }
+};
 
 int main()
 {
@@ -320,11 +401,8 @@ int main()
         }
     )";
     Lexer lexer(code);
-    auto tokens = lexer.tokenize();
-
-    for (const auto &token : tokens)
-    {
-        cout << "Token: " << token.value << ", Type: " << token.type << ", Line: " << token.lineNumber << endl;
-    }
+    vector<Token> tokenList = lexer.tokenize();
+    SymbolTable symbolTable;
+    IntermediateCodeGenerator codeGen;
     return 0;
 }
