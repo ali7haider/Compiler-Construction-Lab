@@ -10,6 +10,11 @@ using namespace std;
 enum TokenType
 {
     T_INT,
+    T_FLOAT,
+    T_DOUBLE,
+    T_STRING,
+    T_BOOL,
+    T_CHAR,
     T_ID,
     T_NUM,
     T_IF,
@@ -74,11 +79,28 @@ public:
                 tokens.push_back(Token{T_NUM, consumeNumber(), lineNumber});
                 continue;
             }
+            if (current == '"')
+            {
+                tokens.push_back(Token{T_STRING, consumeString(), lineNumber});
+                continue;
+            }
             if (isalpha(current))
             {
                 string word = consumeWord();
                 if (word == "int")
                     tokens.push_back(Token{T_INT, word, lineNumber});
+                else if (word == "float")
+                    tokens.push_back(Token{T_FLOAT, word, lineNumber});
+                else if (word == "double")
+                    tokens.push_back(Token{T_DOUBLE, word, lineNumber});
+                else if (word == "string")
+                    tokens.push_back(Token{T_STRING, word, lineNumber});
+                else if (word == "bool")
+                    tokens.push_back(Token{T_BOOL, word, lineNumber});
+                else if (word == "false" || word == "true")
+                    tokens.push_back(Token{T_BOOL, word, lineNumber});
+                else if (word == "char")
+                    tokens.push_back(Token{T_CHAR, word, lineNumber});
                 else if (word == "if")
                     tokens.push_back(Token{T_IF, word, lineNumber});
                 else if (word == "else")
@@ -87,6 +109,7 @@ public:
                     tokens.push_back(Token{T_RETURN, word, lineNumber});
                 else
                     tokens.push_back(Token{T_ID, word, lineNumber});
+
                 continue;
             }
 
@@ -138,11 +161,36 @@ public:
     string consumeNumber()
     {
         size_t start = pos;
-        while (pos < src.size() && isdigit(src[pos]))
+        bool hasDecimal = false;
+        while (pos < src.size() && (isdigit(src[pos]) || (src[pos] == '.' && !hasDecimal)))
+        {
+            if (src[pos] == '.')
+            {
+                hasDecimal = true;
+            }
             pos++;
+        }
         return src.substr(start, pos - start);
     }
-
+    string consumeString()
+    {
+        size_t start = pos + 1;
+        pos++;
+        while (pos < src.size() && src[pos] != '"')
+        {
+            if (src[pos] == '\n')
+            {
+                cout << "Unexpected newline in string literal at line " << lineNumber << endl;
+                exit(1);
+            }
+            pos++;
+        }
+        if (pos < src.size())
+        {
+            pos++;
+        }
+        return src.substr(start, pos - start - 1);
+    }
     string consumeWord()
     {
         size_t start = pos;
@@ -174,7 +222,6 @@ private:
     vector<Token> tokens;
     size_t pos;
 
-    // New error function to print message with line number
     void error(const string &message)
     {
         cout << "Syntax error at line " << tokens[pos].lineNumber << ": " << message << endl;
@@ -183,9 +230,9 @@ private:
 
     void parseStatement()
     {
-        if (tokens[pos].type == T_INT)
+        if (tokens[pos].type == T_INT || tokens[pos].type == T_FLOAT || tokens[pos].type == T_DOUBLE || tokens[pos].type == T_STRING || tokens[pos].type == T_BOOL || tokens[pos].type == T_CHAR)
         {
-            parseDeclaration();
+            parseDeclaration(tokens[pos].type);
         }
         else if (tokens[pos].type == T_ID)
         {
@@ -219,9 +266,9 @@ private:
         expect(T_RBRACE);
     }
 
-    void parseDeclaration()
+    void parseDeclaration(TokenType type)
     {
-        expect(T_INT);
+        expect(type);
         expect(T_ID);
         expect(T_SEMICOLON);
     }
@@ -284,6 +331,11 @@ private:
     {
         if (tokens[pos].type == T_NUM || tokens[pos].type == T_ID)
         {
+            pos++;
+        }
+        else if (tokens[pos].type == T_BOOL)
+        {
+
             pos++;
         }
         else if (tokens[pos].type == T_LPAREN)

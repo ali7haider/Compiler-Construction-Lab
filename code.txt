@@ -1,6 +1,7 @@
 int a;
-a = ;
-int b;
+a = 5.2;
+string b;
+b = "sad";
 b = a + 10;
 if (b > 10) {
     return b;

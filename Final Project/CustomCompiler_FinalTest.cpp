@@ -1,3 +1,4 @@
+// test_Testing.cpp
 #include <iostream>
 #include <string>
 #include <map>
@@ -5,8 +6,10 @@
 #include <vector>
 #include <sstream>
 #include <stdexcept>
+
 using namespace std;
 
+// Define Token Types
 enum TokenType
 {
     T_INT,
@@ -54,6 +57,7 @@ enum TokenType
     T_EOF
 };
 
+// Token Structure
 struct Token
 {
     TokenType type;
@@ -61,6 +65,7 @@ struct Token
     int lineNumber;
 };
 
+// Lexer Class
 class Lexer
 {
 private:
@@ -70,248 +75,249 @@ private:
 
 public:
     Lexer(const string &src) : src(src), pos(0), lineNumber(1) {}
-    vector<Token> tokenize();
 
-private:
-    string consumeNumber();
-    string consumeWord();
-    string consumeString();
-    TokenType identifyKeyword(const string &word);
-    void error(const string &message);
-};
-
-vector<Token> Lexer::tokenize()
-{
-    vector<Token> tokens;
-    while (pos < src.size())
+    vector<Token> tokenize()
     {
-        char current = src[pos];
-        if (current == '\n')
+        vector<Token> tokens;
+        while (pos < src.size())
         {
-            lineNumber++;
-            pos++;
-            continue;
-        }
-        if (isspace(current))
-        {
-            pos++;
-            continue;
-        }
-        if (isdigit(current))
-        {
-            tokens.push_back(Token{T_NUM, consumeNumber(), lineNumber});
-            continue;
-        }
-        if (isalpha(current) || current == '_')
-        {
-            string word = consumeWord();
-            TokenType type = identifyKeyword(word);
-            tokens.push_back(Token{type, word, lineNumber});
-            continue;
-        }
-        if (current == '"')
-        {
-            tokens.push_back(Token{T_STRING, consumeString(), lineNumber});
-            continue;
-        }
-        switch (current)
-        {
-        case '=':
-            if (pos + 1 < src.size() && src[pos + 1] == '=')
+            char current = src[pos];
+            if (current == '\n')
             {
-                tokens.push_back(Token{T_EQ, "==", lineNumber});
+                lineNumber++;
                 pos++;
+                continue;
             }
-            else
+            if (isspace(current))
             {
-                tokens.push_back(Token{T_ASSIGN, "=", lineNumber});
-            }
-            break;
-        case '!':
-            if (pos + 1 < src.size() && src[pos + 1] == '=')
-            {
-                tokens.push_back(Token{T_NEQ, "!=", lineNumber});
                 pos++;
+                continue;
             }
-            else
+            // Handle single-line comments
+            if (current == '/' && pos + 1 < src.size() && src[pos + 1] == '/')
             {
-                tokens.push_back(Token{T_ASSIGN, "!", lineNumber});
+                while (pos < src.size() && src[pos] != '\n')
+                    pos++;
+                continue;
             }
-            break;
-        case '+':
-            tokens.push_back(Token{T_PLUS, "+", lineNumber});
-            break;
-        case '-':
-            tokens.push_back(Token{T_MINUS, "-", lineNumber});
-            break;
-        case '*':
-            tokens.push_back(Token{T_MUL, "*", lineNumber});
-            break;
-        case '/':
-            tokens.push_back(Token{T_DIV, "/", lineNumber});
-            break;
-        case '(':
-            tokens.push_back(Token{T_LPAREN, "(", lineNumber});
-            break;
-        case ')':
-            tokens.push_back(Token{T_RPAREN, ")", lineNumber});
-            break;
-        case '{':
-            tokens.push_back(Token{T_LBRACE, "{", lineNumber});
-            break;
-        case '}':
-            tokens.push_back(Token{T_RBRACE, "}", lineNumber});
-            break;
-        case ';':
-            tokens.push_back(Token{T_SEMICOLON, ";", lineNumber});
-            break;
-        case '>':
-            if (pos + 1 < src.size() && src[pos + 1] == '=')
+            if (isdigit(current))
             {
-                tokens.push_back(Token{T_GTE, ">=", lineNumber});
-                pos++;
+                tokens.push_back(Token{T_NUM, consumeNumber(), lineNumber});
+                continue;
             }
-            else
+            if (isalpha(current) || current == '_')
             {
-                tokens.push_back(Token{T_GT, ">", lineNumber});
+                string word = consumeWord();
+                TokenType type = identifyKeyword(word);
+                tokens.push_back(Token{type, word, lineNumber});
+                continue;
             }
-            break;
-        case '<':
-            if (pos + 1 < src.size() && src[pos + 1] == '=')
+            if (current == '"')
             {
-                tokens.push_back(Token{T_LTE, "<=", lineNumber});
-                pos++;
+                tokens.push_back(Token{T_STRING, consumeString(), lineNumber});
+                continue;
             }
-            else
+            switch (current)
             {
-                tokens.push_back(Token{T_LT, "<", lineNumber});
-            }
-            break;
-        case ':':
-            tokens.push_back(Token{T_COLON, ":", lineNumber});
-            break;
-        case '[':
-            tokens.push_back(Token{T_LBRACKET, "[", lineNumber});
-            break;
-        case ']':
-            tokens.push_back(Token{T_RBRACKET, "]", lineNumber});
-            break;
-        case '.':
-            tokens.push_back(Token{T_DOT, ".", lineNumber});
-            break;
-        default:
-            error("Unexpected character");
-        }
-        pos++;
-    }
-    tokens.push_back(Token{T_EOF, "", lineNumber});
-    return tokens;
-}
-
-string Lexer::consumeNumber()
-{
-    size_t start = pos;
-    while (pos < src.size() && isdigit(src[pos]))
-        pos++;
-    return src.substr(start, pos - start);
-}
-
-string Lexer::consumeWord()
-{
-    size_t start = pos;
-    while (pos < src.size() && (isalnum(src[pos]) || src[pos] == '_'))
-        pos++;
-    return src.substr(start, pos - start);
-}
-
-string Lexer::consumeString()
-{
-    pos++; // Skip opening quote
-    string str = "";
-    while (pos < src.size() && src[pos] != '"')
-    {
-        if (src[pos] == '\\' && pos + 1 < src.size())
-        {
-            // Handle escape characters
-            pos++;
-            char escape = src[pos];
-            switch (escape)
-            {
-            case 'n':
-                str += '\n';
+            case '=':
+                if (pos + 1 < src.size() && src[pos + 1] == '=')
+                {
+                    tokens.push_back(Token{T_EQ, "==", lineNumber});
+                    pos++;
+                }
+                else
+                {
+                    tokens.push_back(Token{T_ASSIGN, "=", lineNumber});
+                }
                 break;
-            case 't':
-                str += '\t';
+            case '!':
+                if (pos + 1 < src.size() && src[pos + 1] == '=')
+                {
+                    tokens.push_back(Token{T_NEQ, "!=", lineNumber});
+                    pos++;
+                }
+                else
+                {
+                    tokens.push_back(Token{T_ASSIGN, "!", lineNumber});
+                }
                 break;
-            case '\\':
-                str += '\\';
+            case '+':
+                tokens.push_back(Token{T_PLUS, "+", lineNumber});
                 break;
-            case '"':
-                str += '"';
+            case '-':
+                tokens.push_back(Token{T_MINUS, "-", lineNumber});
+                break;
+            case '*':
+                tokens.push_back(Token{T_MUL, "*", lineNumber});
+                break;
+            case '/':
+                tokens.push_back(Token{T_DIV, "/", lineNumber});
+                break;
+            case '(':
+                tokens.push_back(Token{T_LPAREN, "(", lineNumber});
+                break;
+            case ')':
+                tokens.push_back(Token{T_RPAREN, ")", lineNumber});
+                break;
+            case '{':
+                tokens.push_back(Token{T_LBRACE, "{", lineNumber});
+                break;
+            case '}':
+                tokens.push_back(Token{T_RBRACE, "}", lineNumber});
+                break;
+            case ';':
+                tokens.push_back(Token{T_SEMICOLON, ";", lineNumber});
+                break;
+            case '>':
+                if (pos + 1 < src.size() && src[pos + 1] == '=')
+                {
+                    tokens.push_back(Token{T_GTE, ">=", lineNumber});
+                    pos++;
+                }
+                else
+                {
+                    tokens.push_back(Token{T_GT, ">", lineNumber});
+                }
+                break;
+            case '<':
+                if (pos + 1 < src.size() && src[pos + 1] == '=')
+                {
+                    tokens.push_back(Token{T_LTE, "<=", lineNumber});
+                    pos++;
+                }
+                else
+                {
+                    tokens.push_back(Token{T_LT, "<", lineNumber});
+                }
+                break;
+            case ':':
+                tokens.push_back(Token{T_COLON, ":", lineNumber});
+                break;
+            case '[':
+                tokens.push_back(Token{T_LBRACKET, "[", lineNumber});
+                break;
+            case ']':
+                tokens.push_back(Token{T_RBRACKET, "]", lineNumber});
+                break;
+            case '.':
+                tokens.push_back(Token{T_DOT, ".", lineNumber});
                 break;
             default:
-                str += escape;
-                break;
+                error("Unexpected character");
             }
+            pos++;
         }
-        else
-        {
-            str += src[pos];
-        }
-        pos++;
+        tokens.push_back(Token{T_EOF, "", lineNumber});
+        return tokens;
     }
-    if (pos >= src.size())
+
+private:
+    string consumeNumber()
     {
-        error("Unterminated string literal");
+        size_t start = pos;
+        while (pos < src.size() && isdigit(src[pos]))
+            pos++;
+        return src.substr(start, pos - start);
     }
-    pos++; // Skip closing quote
-    return str;
-}
 
-TokenType Lexer::identifyKeyword(const string &word)
-{
-    if (word == "int")
-        return T_INT;
-    else if (word == "if")
-        return T_IF;
-    else if (word == "else")
-        return T_ELSE;
-    else if (word == "return")
-        return T_RETURN;
-    else if (word == "while")
-        return T_WHILE;
-    else if (word == "func")
-        return T_FUNC;
-    else if (word == "switch")
-        return T_SWITCH;
-    else if (word == "case")
-        return T_CASE;
-    else if (word == "default")
-        return T_DEFAULT;
-    else if (word == "bool")
-        return T_BOOL;
-    else if (word == "true")
-        return T_TRUE;
-    else if (word == "false")
-        return T_FALSE;
-    else if (word == "for")
-        return T_FOR;
-    else if (word == "struct")
-        return T_STRUCT;
-    else if (word == "class")
-        return T_CLASS;
-    else if (word == "array")
-        return T_ARRAY;
-    else if (word == "string")
-        return T_STRING_TYPE;
-    return T_ID;
-}
+    string consumeWord()
+    {
+        size_t start = pos;
+        while (pos < src.size() && (isalnum(src[pos]) || src[pos] == '_'))
+            pos++;
+        return src.substr(start, pos - start);
+    }
 
-void Lexer::error(const string &message)
-{
-    cout << "Lexical error at line " << lineNumber << ": " << message << endl;
-    exit(1);
-}
+    string consumeString()
+    {
+        pos++; // Skip opening quote
+        string str = "";
+        while (pos < src.size() && src[pos] != '"')
+        {
+            if (src[pos] == '\\' && pos + 1 < src.size())
+            {
+                // Handle escape characters
+                pos++;
+                char escape = src[pos];
+                switch (escape)
+                {
+                case 'n':
+                    str += '\n';
+                    break;
+                case 't':
+                    str += '\t';
+                    break;
+                case '\\':
+                    str += '\\';
+                    break;
+                case '"':
+                    str += '"';
+                    break;
+                default:
+                    str += escape;
+                    break;
+                }
+            }
+            else
+            {
+                str += src[pos];
+            }
+            pos++;
+        }
+        if (pos >= src.size())
+        {
+            error("Unterminated string literal");
+        }
+        pos++; // Skip closing quote
+        return str;
+    }
+
+    TokenType identifyKeyword(const string &word)
+    {
+        if (word == "int")
+            return T_INT;
+        else if (word == "if")
+            return T_IF;
+        else if (word == "else")
+            return T_ELSE;
+        else if (word == "return")
+            return T_RETURN;
+        else if (word == "while")
+            return T_WHILE;
+        else if (word == "func")
+            return T_FUNC;
+        else if (word == "switch")
+            return T_SWITCH;
+        else if (word == "case")
+            return T_CASE;
+        else if (word == "default")
+            return T_DEFAULT;
+        else if (word == "bool")
+            return T_BOOL;
+        else if (word == "true")
+            return T_TRUE;
+        else if (word == "false")
+            return T_FALSE;
+        else if (word == "for")
+            return T_FOR;
+        else if (word == "struct")
+            return T_STRUCT;
+        else if (word == "class")
+            return T_CLASS;
+        else if (word == "array")
+            return T_ARRAY;
+        else if (word == "string")
+            return T_STRING_TYPE;
+        return T_ID;
+    }
+
+    void error(const string &message)
+    {
+        cout << "Lexical error at line " << lineNumber << ": " << message << endl;
+        exit(1);
+    }
+};
+
 // Symbol Table Class
 class SymbolTable
 {
@@ -391,6 +397,7 @@ public:
         return instructions;
     }
 };
+
 // Parser Class
 class Parser
 {
@@ -915,27 +922,300 @@ private:
         exit(1);
     }
 };
+
+class MachineCodeGenerator
+{
+public:
+    // Store the generated machine instructions
+    vector<string> machineInstructions;
+    // Generate machine code from intermediate code and store it
+    void generateMachineCode(const vector<string> &intermediateCode)
+    {
+        for (const string &instr : intermediateCode)
+        {
+            try
+            {
+                string mc = translateToMachineCode(instr);
+                if (!mc.empty())
+                {
+                    machineInstructions.push_back(mc);
+                }
+            }
+            catch (const runtime_error &e)
+            {
+                cerr << "Error translating instruction: \"" << instr << "\"\n"
+                     << e.what() << endl;
+                throw; // Rethrow the exception after logging
+            }
+        }
+    }
+    // Print the stored machine instructions
+    void printMachineInstructions() const
+    {
+        for (const string &instr : machineInstructions)
+        {
+            cout << instr << endl;
+        }
+    }
+
+private:
+    // Translates an intermediate code instruction to machine code
+    string translateToMachineCode(const string &intermediateInstr)
+    {
+        vector<string> tokens = split(intermediateInstr, ' ');
+        if (tokens.empty())
+        {
+            return ""; // Return an empty line for invalid or empty input
+        }
+        // Handle labels
+        if (tokens[0].back() == ':')
+        {
+            return tokens[0];
+        }
+        // Handle conditional jumps: if t3 goto L0
+        if (tokens[0] == "if")
+        {
+            // Handle "if var goto label"
+            if (tokens.size() == 4 && tokens[2] == "goto")
+            {
+                // Example: if t3 goto L0
+                return "CMP " + tokens[1] + ", 0\nJNE " + tokens[3];
+            }
+            // Handle "if A op B goto label"
+            else if (tokens.size() == 6 && tokens[4] == "goto")
+            {
+                // Example: if x == 10 goto L12
+                string operand1 = tokens[1];
+                string op = tokens[2];
+                string operand2 = tokens[3];
+                string label = tokens[5];
+                string machineCode;
+                machineCode += "CMP " + operand1 + ", " + operand2 + "\n";
+                if (op == "==")
+                {
+                    machineCode += "JE " + label;
+                }
+                else if (op == "!=")
+                {
+                    machineCode += "JNE " + label;
+                }
+                else if (op == "<")
+                {
+                    machineCode += "JL " + label;
+                }
+                else if (op == "<=")
+                {
+                    machineCode += "JLE " + label;
+                }
+                else if (op == ">")
+                {
+                    machineCode += "JG " + label;
+                }
+                else if (op == ">=")
+                {
+                    machineCode += "JGE " + label;
+                }
+                else
+                {
+                    throw runtime_error("Unsupported comparison operator: " + op);
+                }
+
+                return machineCode;
+            }
+        }
+
+        // Handle unconditional jumps: goto L1
+        if (tokens[0] == "goto")
+        {
+            if (tokens.size() >= 2)
+            {
+                return "JMP " + tokens[1];
+            }
+        }
+        // Handle return statements: return x
+        if (tokens[0] == "return")
+        {
+            if (tokens.size() >= 2)
+            {
+                return "MOV R0, " + tokens[1] + "\nRET";
+            }
+        }
+        // Handle function definitions: FUNC myFunction:
+        if (tokens[0] == "FUNC")
+        {
+            return tokens[0] + " " + tokens[1];
+        }
+        // Handle function ends: END FUNC myFunction
+        if (tokens[0] == "END" && tokens[1] == "FUNC")
+        {
+            return tokens[0] + " " + tokens[2];
+        }
+        // Handle switch statements
+        if (tokens[0] == "SWITCH")
+        {
+            // Example: SWITCH x
+            if (tokens.size() >= 2)
+            {
+                return "SWITCH " + tokens[1];
+            }
+        }
+        // Handle case statements
+        if (tokens[0] == "CASE")
+        {
+            // Example: CASE 10:
+            if (tokens.size() >= 2)
+            {
+                return "CASE " + tokens[1];
+            }
+        }
+        if (tokens[0] == "DEFAULT")
+        {
+            return "DEFAULT";
+        }
+
+        // Handle assignments and arithmetic operations
+        if (tokens[1] == "=")
+        {
+            if (tokens.size() == 3)
+            {
+                // Simple assignment: x = y
+                return "MOV " + tokens[0] + ", " + tokens[2];
+            }
+            else if (tokens.size() == 5)
+            {
+                // Arithmetic or comparison operation: x = y + z or x = y == z
+                string opCode;
+                string operand1 = tokens[2];
+                string operand2 = tokens[4];
+                string destination = tokens[0];
+
+                if (tokens[3] == "+")
+                    opCode = "ADD " + destination + ", " + operand1 + ", " + operand2;
+                else if (tokens[3] == "-")
+                    opCode = "SUB " + destination + ", " + operand1 + ", " + operand2;
+                else if (tokens[3] == "*")
+                    opCode = "MUL " + destination + ", " + operand1 + ", " + operand2;
+                else if (tokens[3] == "/")
+                    opCode = "DIV " + destination + ", " + operand1 + ", " + operand2;
+                else if (tokens[3] == "==")
+                {
+                    // Compare and set destination based on equality
+                    opCode = "CMP " + operand1 + ", " + operand2 + "\nSETE " + destination;
+                }
+                else if (tokens[3] == "!=")
+                {
+                    // Compare and set destination based on inequality
+                    opCode = "CMP " + operand1 + ", " + operand2 + "\nSETNE " + destination;
+                }
+                else if (tokens[3] == "<")
+                {
+                    // Compare and set destination based on less than
+                    opCode = "CMP " + operand1 + ", " + operand2 + "\nSETL " + destination;
+                }
+                else if (tokens[3] == ">")
+                {
+                    // Compare and set destination based on greater than
+                    opCode = "CMP " + operand1 + ", " + operand2 + "\nSETG " + destination;
+                }
+                else
+                {
+                    throw runtime_error("Unsupported operation: " + tokens[3]);
+                }
+
+                return opCode;
+            }
+        }
+        // Handle break statements (assuming 'JMP L' format)
+        if (tokens[0] == "BREAK")
+        {
+            if (tokens.size() >= 2)
+            {
+                return "JMP " + tokens[1];
+            }
+        }
+        // Handle other unsupported instructions
+        throw runtime_error("Unsupported operation: " + intermediateInstr);
+    }
+
+    // Splits a string into tokens by a delimiter
+    vector<string> split(const string &str, char delimiter)
+    {
+        vector<string> tokens;
+        string token;
+        istringstream tokenStream(str);
+        while (getline(tokenStream, token, delimiter))
+        {
+            if (!token.empty())
+            {
+                tokens.push_back(token);
+            }
+        }
+        return tokens;
+    }
+};
+
+// Main Function
 int main()
 {
-    string code = R"(
-        int a = 10;
-        if (a < 20) {
-            a = a + 1;
-        }
+    string sourceCode = R"(
+      int a;
+      a = 5;
+      int b;
+      b = 15;
+      int result;
+      result = a * b + 10;
+      if (a < b) {
+          a = b - 5;
+      }
+      while (result > 20) {
+          result = result / 2;
+      }
+      func calculate() {
+          int temp;
+          temp = 50;
+      }
+      bool isActive;
+      isActive = false;
+      struct Rectangle {
+          int length;
+          int width;
+      };
+      switch (b) {
+      case 15:
+          b = b * 2;
+      default:
+          b = b - 10;
+      }
+      if (b == 20) {
+          result = result + 5;
+      }
+      for (int j = 0; j < 6; j = j + 2) { // Changed <= to <
+          result = result - j;
+      }
     )";
-    Lexer lexer(code);
+
+    Lexer lexer(sourceCode);
     vector<Token> tokenList = lexer.tokenize();
     SymbolTable symbolTable;
     IntermediateCodeGenerator codeGen;
     Parser parser(tokenList, symbolTable, codeGen);
     parser.parseProgram();
 
-    cout << "---------------------------" << endl;
     cout << "Generated Intermediate Code:" << endl;
-    cout << "---------------------------" << endl;
-    cout << "" << endl;
-
     codeGen.printInstructions();
+
+    try
+    {
+        MachineCodeGenerator machineGen;
+        machineGen.generateMachineCode(codeGen.getInstructionsAsVector());
+        cout << "\nGenerated Machine Code:" << endl;
+        machineGen.printMachineInstructions();
+    }
+    catch (const runtime_error &exception)
+    {
+        cerr << "Error during machine code generation: " << exception.what() << endl;
+        return 1;
+    }
 
     return 0;
 }
